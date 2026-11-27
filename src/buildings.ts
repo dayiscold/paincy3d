@@ -333,16 +333,18 @@ function build(land: T.Group, p: Physics, b: Building) {
   );
   for (let u = -w / 2 + 0.38; u < w / 2 - 0.12; u += 0.36)
     board(u, 0.041, 0, 0.013, 0.006, d - 0.19, timber);
-  solid(0, h - 0.045, 0, w, 0.12, d, open && !barn ? plaster : timber);
+  if (!barn) solid(0, h - 0.045, 0, w, 0.12, d, open ? plaster : timber);
   for (const edge of [-1, 1]) {
     for (const end of [-1, 1])
       board(edge * (w / 2 - 0.03), h / 2, end * front, 0.19, h, 0.26, trim);
     board((edge * w) / 2, h - 0.12, 0, 0.26, 0.18, d + 0.3, trim);
   }
-  const attic = new T.Mesh(triangle, atticMaterial);
-  attic.scale.set(w, rise, d);
-  attic.position.set(x, h, z - front);
-  land.add(attic);
+  for (const end of [-1, 1]) {
+    const gableEnd = new T.Mesh(triangle, atticMaterial);
+    gableEnd.scale.set(w, rise, 0.15);
+    gableEnd.position.set(x, h, z + end * (front - 0.075) - 0.075);
+    land.add(gableEnd);
+  }
   for (let u = -w / 2 + 0.17; u < w / 2; u += 0.34) {
     const plankH = rise * (1 - (Math.abs(u) + 0.16) / (w / 2));
     if (plankH <= 0) continue;
@@ -412,8 +414,9 @@ function build(land: T.Group, p: Physics, b: Building) {
       board(0, h + 0.4 + j * 0.14, front + 0.091, 0.49, 0.065, 0.05, iron);
   }
 
-  const porchW = barn ? 4 : shop ? 5.6 : club ? 3.65 : 2.6,
-    porchX = shop ? 0.4 : doorX;
+  const residential = kind === "home" || kind === "cottage";
+  const porchW = barn ? 4 : shop ? 5.6 : club ? 3.65 : residential ? 3.45 : 2.6,
+    porchX = shop ? 0.4 : residential ? doorX - 0.4 : doorX;
   solid(porchX, 0.003, front + 0.69, porchW, 0.074, 1.4, endGrain);
   for (let v = 0.16; v < 1.4; v += 0.27)
     board(porchX, 0.041, front + v, porchW, 0.005, 0.015, timber);
@@ -491,7 +494,14 @@ function build(land: T.Group, p: Physics, b: Building) {
       );
     }
   }
-  if (kind === "home" || kind === "cottage") {
+  if (residential) {
+    // Leave the approach to the door clear between the two end rails.
+    for (const side of [-1, 1]) {
+      const u = porchX + side * (porchW / 2 - 0.1);
+      solid(u, 0.87, front + 0.7, 0.11, 0.12, 1.19, trim);
+      for (const v of [0.32, 0.62, 0.92])
+        board(u, 0.46, front + v, 0.075, 0.78, 0.075, paint);
+    }
     for (const u of frontWindows) {
       for (const side of [-1, 1]) {
         board(u + side * 0.91, 1.56, front + 0.18, 0.32, 1.37, 0.07, "#567873");
@@ -579,6 +589,16 @@ function build(land: T.Group, p: Physics, b: Building) {
       "#f4dfad",
       "#645145",
     );
+  if (club) {
+    const u = -w / 2 + 0.65, v = front + 1.26;
+    for (const offset of [-0.46, 0.46])
+      solid(u + offset, 0.59, v, 0.1, 1.18, 0.11, trim);
+    solid(u, 1.62, v, 1.22, 0.97, 0.11, timber);
+    plaque("АФИША", u, 1.91, v + 0.062, 1.03, 0.24, trim, iron);
+    plaque("КИНО", u - 0.23, 1.48, v + 0.062, 0.46, 0.42, iron, "#d8ab76");
+    plaque("ТАНЦЫ", u + 0.25, 1.51, v + 0.062, 0.43, 0.37, iron, plaster);
+    solid(-opening / 2 - 0.07, doorH / 2, -front - opening / 2, 0.11, doorH, opening, "#54756a");
+  }
   if (shop)
     plaque(
       "СЕЛЬПО",
@@ -644,6 +664,13 @@ function build(land: T.Group, p: Physics, b: Building) {
     for (const v of [-0.84, -0.64, 0.9, 1.11])
       board(0.13, 0.059, v, 1.24, 0.01, 0.07, "#d9b792");
   } else if (shop) {
+    // Display the goods just behind the street-facing glass.
+    solid(-1.72, 0.53, front - 0.43, 2.58, 1.0, 0.57, timber);
+    for (let i = 0; i < 5; i++) {
+      const u = -2.67 + i * 0.46;
+      round(u, 1.2, front - 0.43, 0.145, 0.16, 0.32, i % 2 ? "#bf9b50" : "#975b4c");
+      round(u, 1.38, front - 0.43, 0.15, 0.15, 0.045, iron);
+    }
     solid(-1.65, 0.5, -0.82, 3.75, 0.94, 0.83, "#648276");
     board(-1.65, 1, -0.82, 3.9, 0.1, 0.94, endGrain);
     solid(-1.6, 1.05, -front + 0.45, 4.2, 2.03, 0.63, timber);
@@ -729,7 +756,13 @@ function build(land: T.Group, p: Physics, b: Building) {
       round(u, 1.12, -front + 0.89, 0.23, 0.38, 0.15, "#b8bdb0");
       p.box(x + u, 0.58, z - front + 0.89, 0.78, 1.17, 0.78);
     }
-    for (const v of [-2.8, 0, 2.8])
-      board(0, h - 0.19, v, w - 0.18, 0.25, 0.18, timber);
+    for (const v of [-2.8, 0, 2.8]) {
+      solid(0, h - 0.12, v, w - 0.18, 0.24, 0.18, timber);
+      board(0, h + rise / 2 - 0.1, v, 0.16, rise, 0.16, endGrain);
+      for (const side of [-1, 1]) {
+        stick([side * (w / 2 - 0.1), h, v], [0, h + rise - 0.1, v], 0.19, timber);
+        stick([side * w / 4, h - 0.1, v], [0, h + rise * 0.62, v], 0.13, endGrain);
+      }
+    }
   }
 }
